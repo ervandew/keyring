@@ -41,6 +41,10 @@ as a single password store for various apps.
 **Note:** Most of the plugins provided expect the bin/keyring script included
 in the repository to be available in your path.
 
+Dependencies:
+  - gnome-keyring
+  - python-gnomekeyring
+
 bin/keyring
 -----------
 
