@@ -1,0 +1,241 @@
+#!/usr/bin/env python2
+#
+# Script to help manage credentials in gnome-keyring.
+
+from functools import wraps
+import getpass
+import gnomekeyring
+import optparse
+import os
+import re
+import time
+import sys
+
+class Formatter(optparse.IndentedHelpFormatter):
+  def format_description(self, description):
+    return description
+
+class Keyring(object):
+  def __init__(self, keyring='login'):
+    self.keyring = keyring
+
+  def keys(self):
+    keys = []
+    for item in gnomekeyring.list_item_ids_sync(self.keyring):
+      info = gnomekeyring.item_get_info_sync(self.keyring, item)
+      keys.append(info.get_display_name())
+    return keys
+
+  def get(self, key):
+    items = gnomekeyring.find_items_sync(
+      gnomekeyring.ITEM_NETWORK_PASSWORD, {'key': key}
+    )
+    return items[0].secret
+
+  def set(self, key, value, smtp=False):
+    attrs = {'key': key}
+    if smtp:
+      user, server = key.rsplit('@', 1)
+      attrs = {'user': user, 'server': server, 'protocol': 'smtp'}
+
+    gnomekeyring.item_create_sync(
+      self.keyring, gnomekeyring.ITEM_NETWORK_PASSWORD,
+      key, attrs, value, True
+    )
+
+  def delete(self, key):
+    items = gnomekeyring.find_items_sync(
+      gnomekeyring.ITEM_NETWORK_PASSWORD, {'key': key}
+    )
+    if items:
+      gnomekeyring.item_delete_sync(self.keyring, items[0].item_id)
+
+  def find(self, pattern):
+    if isinstance(pattern, basestring):
+      pattern = re.compile(pattern)
+
+    for item in gnomekeyring.list_item_ids_sync(self.keyring):
+      info = gnomekeyring.item_get_info_sync(self.keyring, item)
+      name = info.get_display_name()
+      if pattern.search(name):
+        return name
+
+def output(func):
+    def wrapper(options, *args, **kwargs):
+      result = None
+      try:
+        result = func(options, *args, **kwargs)
+
+        if options.tempfile:
+          _tempfile(options.tempfile, result)
+
+        if options.clipboard:
+          _clipboard(result)
+
+        if not options.tempfile and not options.clipboard:
+          print(result)
+      finally:
+        if not result:
+          if options.clipboard:
+            _clipboard('')
+
+    return wraps(func)(wrapper)
+
+def main():
+  parser = optparse.OptionParser()
+  parser.add_option(
+    "-k", "--keyring", dest="keyring", default="login",
+    help="the keyring to use (default: login)")
+  parser.add_option(
+    "-t", "--tempfile", dest="tempfile",
+    help="write get/password/username to a tempfile (deleted 1s after creation)")
+  parser.add_option(
+    "-c", "--clipboard", action="store_true", dest="clipboard",
+    help="write get/password/username to a clipboard (cleared 10s after being set)")
+
+  parser.set_usage('Usage: keyring [options] <command> [command args]')
+  parser.set_description(
+    'Commands:\n'
+    '  list - list all stored keys\n'
+    '  set [<key>] - set a key\n'
+    '  get/password <key> - get the password for the given key\n'
+    '  delete <key> - delete the entry for the given key\n'
+    '  username <domain> - get the username for the given domain\n'
+    '  smtp [<key>] - set a smtp password (msmtp format)\n'
+  )
+  parser.formatter = Formatter()
+
+  (options, args) = parser.parse_args()
+
+  valid_args = {
+    'list': 1, 'get': 2, 'set': lambda a: a in (1, 2), 'delete': 2,
+    'username': 2, 'password': 2, 'smtp': lambda a: a in (1, 2),
+  }
+  valid = valid_args.get(args[0])
+  if not callable(valid):
+    num = valid
+    valid = lambda a: a == num
+  if not len(args) or not valid(len(args)):
+    parser.print_help()
+    sys.exit(1)
+
+  command = args[0]
+
+  keyring = Keyring(options.keyring)
+
+  if command == 'list':
+    for name in sorted(keyring.keys()):
+      print(name)
+
+  elif command == 'get' or command == 'password':
+    try:
+      _get_password(options, keyring, args[1])
+    except gnomekeyring.NoMatchError:
+      sys.stderr.write('error: No match found.\n')
+      sys.exit(1)
+
+  elif command == 'set':
+    key = args[1] if len(args) > 1 else _get_input('key: ')
+    password = _get_input('password: ', password=True)
+    print('')
+    keyring.set(key, password)
+
+  elif command == 'delete':
+    try:
+      keyring.delete(args[1])
+    except gnomekeyring.NoMatchError:
+      sys.stderr.write('error: No match found.\n')
+      sys.exit(1)
+
+  elif command == 'username':
+    _get_username(options, keyring, args[1])
+
+  elif command == 'smtp':
+    user = args[1] if len(args) > 1 else _get_input('user (user@example.com): ')
+    server = _get_input('server (smtp.example.com): ')
+    password = _get_input('password: ', password=True)
+    print('')
+    key = '%s@%s' % (user, server)
+    keyring.set(key, password, smtp=True)
+
+@output
+def _get_password(options, keyring, key):
+  if key.startswith('@'):
+    username = _get_username(keyring, key[1:])
+    if username:
+      key = username + key
+
+  return keyring.get(key)
+
+@output
+def _get_username(options, keyring, domain):
+  result = keyring.find('@%s' % domain)
+  if not result:
+    out('error: No match found.', file=sys.stderr)
+
+  return result.rsplit('@', 1)[0]
+
+def _get_input(prompt, password=False):
+  if password:
+    value = getpass.getpass(prompt)
+  else:
+    value = raw_input(prompt)
+
+  if not value:
+    sys.stderr.write('No value supplied, aborting.')
+    sys.exit(0)
+
+  return value
+
+def _tempfile(tempfile, content):
+  with open(tempfile, 'w') as temp:
+    temp.write(content)
+  _cleanup(_cleanup_tempfile, 1, tempfile)
+
+def _cleanup_tempfile(timeout, tempfile):
+  time.sleep(timeout)
+  os.unlink(tempfile)
+
+def _clipboard(content):
+  os.popen('xclip -selection clipboard', 'wb').write(content)
+  if content:
+    _cleanup(_cleanup_clipboard, 10)
+
+def _cleanup_clipboard(timeout):
+  time.sleep(timeout)
+  os.popen('xclip -selection clipboard', 'wb').write('')
+
+def _cleanup(func, *args):
+  try:
+    pid = os.fork()
+    if pid > 0:
+      sys.exit(0)
+  except OSError as e:
+    out('Failed to fork cleanup: %s' % e, file=sys.stderr)
+    sys.exit(1)
+
+  # decouple from parent
+  os.chdir('/')
+  os.setsid()
+  os.umask(0)
+
+  try:
+    pid = os.fork()
+    if pid > 0:
+      out('Cleanup fork pid: %s' % pid, file=sys.stderr)
+      sys.exit(0)
+  except OSError as e:
+    out('Failed to fork cleanup: %s' % e, file=sys.stderr)
+    sys.exit(1)
+
+  func(*args)
+
+def out(string, **kwargs):
+  file = kwargs.pop('file', sys.stdout)
+  file.write('%s\n' % string)
+
+if __name__ == '__main__':
+  try:
+    main()
+  except KeyboardInterrupt:
+    print('')
