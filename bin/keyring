@@ -107,6 +107,10 @@ def main():
 
   (options, args) = parser.parse_args()
 
+  if not len(args):
+    parser.print_help()
+    sys.exit(1)
+
   valid_args = {
     'list': 1, 'get': 2, 'set': lambda a: a in (1, 2), 'delete': 2,
     'username': 2, 'password': 2, 'smtp': lambda a: a in (1, 2),
@@ -115,7 +119,7 @@ def main():
   if not callable(valid):
     num = valid
     valid = lambda a: a == num
-  if not len(args) or not valid(len(args)):
+  if not valid(len(args)):
     parser.print_help()
     sys.exit(1)
 
