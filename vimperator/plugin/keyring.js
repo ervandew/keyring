@@ -31,6 +31,18 @@
  *      Note: this will only populate the input if it is of type 'password'.
  */
 function Keyring() {
+  function console(){
+    var Firebug = window
+      .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+      .getInterface(Components.interfaces.nsIWebNavigation)
+      .QueryInterface(Components.interfaces.nsIDocShellTreeItem)
+      .rootTreeItem
+      .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+      .getInterface(Components.interfaces.nsIDOMWindow).Firebug;
+
+    return Firebug.Console || {log: function(){}, error: function(){}};
+  }
+
   function paste(arg){
     try{
       var inputField = window.content.document.lastInputField;
@@ -41,14 +53,14 @@ function Keyring() {
       var clip = Components.classes["@mozilla.org/widget/clipboard;1"]
         .getService(Components.interfaces.nsIClipboard);
       if (!clip){
-        Firebug.Console.log('Failed to aquire the clipboard.');
+        console().log('Failed to aquire the clipboard.');
         return;
       }
 
       var trans = Components.classes["@mozilla.org/widget/transferable;1"]
         .createInstance(Components.interfaces.nsITransferable);
       if (!trans){
-        Firebug.Console.log('Failed to aquire the transferable.');
+        console().log('Failed to aquire the transferable.');
         return;
       }
       trans.addDataFlavor("text/unicode");
@@ -58,7 +70,7 @@ function Keyring() {
       trans.getTransferData("text/unicode", str, strLength);
 
       if (!str) {
-        Firebug.Console.log('No content retrieved from the clipboard.');
+        console().log('No content retrieved from the clipboard.');
         return;
       }
 
@@ -69,7 +81,7 @@ function Keyring() {
         window.content.document.username = value;
       }
     }catch(e){
-      Firebug.Console.log(e);
+      console().error(e);
     }
   }
 
@@ -87,7 +99,7 @@ function Keyring() {
           .getService(Components.interfaces.nsIObserverService);
       observerService.addObserver(this, "keyring", false);
     }
-  }
+  };
   var observers = {
     'username': new KeyringObserver('username'),
     'password': new KeyringObserver('password')
@@ -109,10 +121,10 @@ function Keyring() {
       var observer = observers[args[0]];
       args.unshift('-c');
       process.init(file);
-      Firebug.Console.log(args);
+      console().log(args);
       process.runAsync(args, args.length, observer);
     }catch(e){
-      Firebug.Console.log(e);
+      console().error(e);
     }
   }
 
@@ -141,7 +153,7 @@ function Keyring() {
 
     if (root == window.content.document){
       var frames = root.querySelectorAll('iframe');
-      for (var i = 0; i < frames.length; i++){
+      for (i = 0; i < frames.length; i++){
         passInput = findPasswordInput(frames[i].contentWindow.document);
         if (passInput){
           return passInput;
@@ -152,7 +164,7 @@ function Keyring() {
   }
 
   function isVisible(input){
-    var node = input
+    var node = input;
     while(node){
       if(node.nodeName.toLowerCase() == 'body'){
         return true;
@@ -187,8 +199,8 @@ function Keyring() {
         liberator.echoerr('No user input found.');
         return;
       }
-      Firebug.Console.log(['username', userInput]);
-      Firebug.Console.log(['password', passInput]);
+      console().log(['username', userInput]);
+      console().log(['password', passInput]);
       keyring['username'](args, userInput);
       // hacky... is there a better way to wait for completion of the username
       // step?
