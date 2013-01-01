@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 - 2011 by Eric Van Dewoestine
+ * Copyright (c) 2010 - 2012 by Eric Van Dewoestine
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -75,11 +75,16 @@ function Keyring() {
       }
 
       str = str.value.QueryInterface(Components.interfaces.nsISupportsString);
-      var value= str.data.substring(0, strLength.value / 2);
-      inputField.value = value;
+      var value = str.data.substring(0, strLength.value / 2);
       if (arg == 'username'){
-        window.content.document.username = value;
+        var values = value.split("\n");
+        if (values.length > 1){
+          // FIXME: prompt user with avaliable options
+          value = values[0];
+        }
       }
+      window.content.document.username = value;
+      inputField.value = value;
     }catch(e){
       console().error(e);
     }
@@ -135,7 +140,7 @@ function Keyring() {
     }
 
     var host = document.location.hostname;
-    var remove = /^(www\d*|wwws|us|login|sitekey|secure)\./;
+    var remove = /^(www\d*|wwws|us|login|safe|sitekey|secure)\./;
     if (remove.test(host)){
       host = host.replace(remove, '');
     }
@@ -206,7 +211,13 @@ function Keyring() {
       // step?
       setTimeout(function(){
         if (window.content.document.username){
-          keyring['password'](args, passInput);
+          var host = hostname(userInput.ownerDocument, args);
+          if (host.indexOf('@') != -1){
+            var parts = host.split('@');
+            host = parts[parts.length - 1];
+          }
+          var username = window.content.document.username;
+          keyring['password']([username], passInput, host);
         }
       }, 500);
     },
@@ -223,7 +234,7 @@ function Keyring() {
       }
     },
 
-    password: function(args, input){
+    password: function(args, input, host){
       var inputField = input || window.content.document.lastInputField;
       if (!inputField || inputField.nodeName != 'INPUT' || inputField.type != 'password'){
         var passInput = findPasswordInput(window.content.document);
@@ -237,21 +248,30 @@ function Keyring() {
         }else{
           buffer.focusElement(inputField);
           window.content.document.lastInputField = inputField;
-          var username = window.content.document.username || '';
-          var key = hostname(inputField.ownerDocument, args);
-          if (key.indexOf('@') == -1){
-            if (!username) {
-              execute(['username', key]);
-              setTimeout(function(){
-                if (window.content.document.username){
-                  keyring['password'](args);
-                }
-              }, 500);
-              return;
-            }
-            key = username + '@' + key;
+          var username = args && args.length ? args[0] :
+            window.content.document.username || '';
+          console().log(['username', username]);
+          host = host || hostname(inputField.ownerDocument);
+
+          // no username, so look it up by the host
+          if (!username){
+            execute(['username', host]);
+            setTimeout(function(){
+              if (window.content.document.username){
+                username = window.content.document.username;
+                execute(['password', username + '@' + host]);
+              }
+            }, 500);
+
+          // no @, so must be a username
+          }else if (username.indexOf('@') == -1){
+            execute(['password', username + '@' + host]);
+
+          // contains @, so could just be username (email) or could be
+          // username@host
+          }else{
+            execute(['password', username + '@' + host, username]);
           }
-          execute(['password', key]);
         }
       }else{
         liberator.echoerr('Unable to determine input field.');
