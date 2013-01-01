@@ -54,11 +54,14 @@ class Keyring(object):
     if isinstance(pattern, basestring):
       pattern = re.compile(pattern)
 
+    results = []
     for item in gnomekeyring.list_item_ids_sync(self.keyring):
       info = gnomekeyring.item_get_info_sync(self.keyring, item)
       name = info.get_display_name()
       if pattern.search(name):
-        return name
+        results.append(name)
+
+    return results
 
 def output(func):
     def wrapper(options, *args, **kwargs):
@@ -113,7 +116,8 @@ def main():
 
   valid_args = {
     'list': 1, 'get': 2, 'set': lambda a: a in (1, 2), 'delete': 2,
-    'username': 2, 'password': 2, 'smtp': lambda a: a in (1, 2),
+    'username': lambda a: a >= 2, 'password': lambda a: a >= 2,
+    'smtp': lambda a: a in (1, 2),
   }
   valid = valid_args.get(args[0])
   if not callable(valid):
@@ -133,7 +137,7 @@ def main():
 
   elif command == 'get' or command == 'password':
     try:
-      _get_password(options, keyring, args[1])
+      _get_password(options, keyring, *args[1:])
     except gnomekeyring.NoMatchError:
       sys.stderr.write('error: No match found.\n')
       sys.exit(1)
@@ -152,7 +156,7 @@ def main():
       sys.exit(1)
 
   elif command == 'username':
-    _get_username(options, keyring, args[1])
+    _get_username(options, keyring, *args[1:])
 
   elif command == 'smtp':
     user = args[1] if len(args) > 1 else _get_input('user (user@example.com): ')
@@ -163,21 +167,30 @@ def main():
     keyring.set(key, password, smtp=True)
 
 @output
-def _get_password(options, keyring, key):
-  if key.startswith('@'):
-    username = _get_username(keyring, key[1:])
-    if username:
-      key = username + key
+def _get_password(options, keyring, *keys):
+  error = None
+  for key in keys:
+    try:
+      return keyring.get(key)
+    except gnomekeyring.NoMatchError as nme:
+      error = nme
 
-  return keyring.get(key)
+  if error:
+    raise error
 
 @output
-def _get_username(options, keyring, domain):
-  result = keyring.find('@%s' % domain)
-  if not result:
-    out('error: No match found.', file=sys.stderr)
+def _get_username(options, keyring, *keys):
+  for key in keys:
+    results = keyring.find('.*@%s$' % key)
+    if results:
+      results = set([r.rsplit('@', 1)[0] for r in results])
+    else:
+      results = keyring.find('^%s$' % key)
 
-  return result.rsplit('@', 1)[0]
+    if results:
+      return '\n'.join(results)
+
+  out('error: No match found.', file=sys.stderr)
 
 def _get_input(prompt, password=False):
   if password:
