@@ -5,6 +5,7 @@
 from functools import wraps
 import getpass
 import gnomekeyring
+import hashlib
 import optparse
 import os
 import re
@@ -26,11 +27,28 @@ class Keyring(object):
       keys.append(info.get_display_name())
     return keys
 
-  def get(self, key):
+  def get(self, key, smtp=False, hash_=None, salt=False):
+    attrs = {'key': key}
+    if smtp:
+      user, server = key.rsplit('@', 1)
+      attrs = {'user': user, 'server': server, 'protocol': 'smtp'}
+
     items = gnomekeyring.find_items_sync(
-      gnomekeyring.ITEM_NETWORK_PASSWORD, {'key': key}
+      gnomekeyring.ITEM_NETWORK_PASSWORD, attrs
     )
-    return items[0].secret
+    secret = items[0].secret
+    if hash_ is not None:
+      if salt:
+        secret = '%s{%s}' % (secret, key)
+
+      if hash_ in ('b64', 'base64'):
+        secret = secret.encode('base64').strip('\n').strip('=')
+      else:
+        method = getattr(hashlib, hash_)()
+        method.update(secret)
+        secret = method.hexdigest()
+
+    return secret
 
   def set(self, key, value, smtp=False):
     attrs = {'key': key}
@@ -90,6 +108,12 @@ def main():
     "-k", "--keyring", dest="keyring", default="login",
     help="the keyring to use (default: login)")
   parser.add_option(
+    "--hash", dest="hash",
+    help="run the password through the specified hash before outputting it")
+  parser.add_option(
+    "--salt", action="store_true", dest="salt",
+    help="combined with --hash, the key will be used as a salt")
+  parser.add_option(
     "-t", "--tempfile", dest="tempfile",
     help="write get/password/username to a tempfile (deleted 1s after creation)")
   parser.add_option(
@@ -115,9 +139,13 @@ def main():
     sys.exit(1)
 
   valid_args = {
-    'list': 1, 'get': 2, 'set': lambda a: a in (1, 2), 'delete': 2,
-    'username': lambda a: a >= 2, 'password': lambda a: a >= 2,
-    'smtp': lambda a: a in (1, 2),
+    'list': 1,
+    'set': lambda a: 1 <= a <= 2,
+    'smtp': lambda a: 1 <= a <= 2,
+    'delete': 2,
+    'username': lambda a: a >= 2,
+    'password': lambda a: a >= 2,
+    'get': lambda a: a >= 2,
   }
   valid = valid_args.get(args[0])
   if not callable(valid):
@@ -171,7 +199,7 @@ def _get_password(options, keyring, *keys):
   error = None
   for key in keys:
     try:
-      return keyring.get(key)
+      return keyring.get(key, hash_=options.hash, salt=options.salt)
     except gnomekeyring.NoMatchError as nme:
       error = nme
 
