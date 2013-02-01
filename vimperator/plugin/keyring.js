@@ -140,7 +140,7 @@ function Keyring() {
     }
 
     var host = document.location.hostname;
-    var remove = /^(www\d*|wwws|us|login|safe|sitekey|secure)\./;
+    var remove = /^(www\d*|wwws|us|login|safe|sitekey|secure.*?)\./;
     if (remove.test(host)){
       host = host.replace(remove, '');
     }
