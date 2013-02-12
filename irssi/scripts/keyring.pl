@@ -18,20 +18,29 @@ Irssi::command_bind keyring => sub {
         $username = "$parts[4]\@$parts[1]";
       }
     }elsif ($parts[0] eq 'xmppconnect'){
-      if (scalar(@parts) >= 5){
-        $username = $parts[3];
+      foreach (@parts) {
+        if ($_ =~ '@'){
+          $username = $_;
+          last;
+        }
       }
     }else{
+      next;
+    }
+
+    # just print available account names
+    if($account eq 'names') {
+      print $username;
+      next;
+    }
+
+    if(!$username || ($account && $account ne $username)){
       next;
     }
 
     # handle alternate username
     if($command =~ m/.*<password:([^>]*)>.*/){
       $username = $1;
-    }
-
-    if(!$username || ($account && $account ne $username)){
-      next;
     }
 
     my ($stdin, $stdout, $stderr);

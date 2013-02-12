@@ -1,4 +1,4 @@
-.. Copyright (c) 2011 - 2012, Eric Van Dewoestine
+.. Copyright (c) 2011 - 2013, Eric Van Dewoestine
    All rights reserved.
 
    Redistribution and use of this software in source and binary forms, with
@@ -162,6 +162,13 @@ command in irssi to authenticate all or individual accounts:
 
   /keyring
   /keyring username
+
+Similar to using `/names` in a channel, supplying the special username `names`
+to `/keyring` will print a list of available usernames:
+
+::
+
+  /keyring names
 
 
 offlineimap
