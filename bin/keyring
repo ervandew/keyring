@@ -163,7 +163,12 @@ def main():
     help="write get/password/username to a tempfile (deleted 1s after creation)")
   parser.add_option(
     "-c", "--clipboard", action="store_true", dest="clipboard",
-    help="write get/password/username to a clipboard (cleared 10s after being set)")
+    help="write get/password/username to a clipboard " \
+         "(cleared 10s after being set). Requires xclip")
+  parser.add_option(
+    "-p", "--paste", action="store_true", dest="paste",
+    help="when used with 'prompt', paste the result password into " \
+         "the currently focused field. Requires xdotool")
 
   parser.set_usage('Usage: keyring [options] <command> [command args]')
   parser.set_description(
@@ -216,6 +221,9 @@ def main():
       sys.stderr.write('error: No match found.\n')
       sys.exit(1)
 
+  elif command == 'prompt':
+    _prompt_key(options, keyring)
+
   elif command == 'set':
     key = args[1] if len(args) > 1 else _get_input('key: ')
     password = _get_input('password: ', password=True)
@@ -224,7 +232,8 @@ def main():
 
   elif command == 'delete':
     try:
-      keyring.delete(args[1])
+      for key in args[1:]:
+        keyring.delete(key)
     except gnomekeyring.NoMatchError:
       sys.stderr.write('error: No match found.\n')
       sys.exit(1)
@@ -267,6 +276,53 @@ def _get_username(options, keyring, *keys):
 
   out('error: No match found.', file=sys.stderr)
 
+def _prompt_key(options, keyring):
+  import gtk
+  dialog = gtk.MessageDialog(
+    None,
+    gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+    gtk.MESSAGE_OTHER,
+    gtk.BUTTONS_OK,
+    None)
+  dialog.set_position(gtk.WIN_POS_CENTER)
+  dialog.set_markup('Please enter key to retrieve the password for:')
+  entry = gtk.Entry()
+  entry.connect(
+    'activate',
+    lambda entry, dialog, response: dialog.response(response),
+    dialog,
+    gtk.RESPONSE_OK)
+  hbox = gtk.HBox()
+  hbox.pack_start(gtk.Label('Name:'), False, 5, 5)
+  hbox.pack_end(entry)
+  dialog.vbox.pack_end(hbox, True, True, 0)
+  dialog.show_all()
+  dialog.run()
+  key = entry.get_text()
+  dialog.destroy()
+
+  # dialog won't hide without this (gotta love UI code)
+  while gtk.events_pending():
+    gtk.main_iteration(False)
+
+  if key:
+    try:
+      result = keyring.get(
+        key, hash_=options.hash, salt=options.salt, pbkdf2=options.pbkdf2)
+    except gnomekeyring.NoMatchError:
+      dialog = gtk.MessageDialog(
+        None,
+        gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+        gtk.MESSAGE_ERROR,
+        gtk.BUTTONS_OK,
+        None)
+      dialog.set_position(gtk.WIN_POS_CENTER)
+      dialog.set_markup('Unable to find the key: ' + key)
+      dialog.show_all()
+      dialog.run()
+    else:
+      _clipboard(result, paste=options.paste)
+
 def _get_input(prompt, password=False):
   if password:
     value = getpass.getpass(prompt)
@@ -288,10 +344,17 @@ def _cleanup_tempfile(timeout, tempfile):
   time.sleep(timeout)
   os.unlink(tempfile)
 
-def _clipboard(content):
+def _clipboard(content, paste=False):
   os.popen('xclip -selection clipboard', 'wb').write(content)
   if content:
-    _cleanup(_cleanup_clipboard, 10)
+    if paste:
+      _cleanup(_paste_clipboard, .2)
+    else:
+      _cleanup(_cleanup_clipboard, 10)
+
+def _paste_clipboard(timeout):
+  os.popen('xdotool key ctrl+v')
+  _cleanup_clipboard(0)
 
 def _cleanup_clipboard(timeout):
   time.sleep(timeout)

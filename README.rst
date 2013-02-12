@@ -58,6 +58,8 @@ This script allows you to perform some basic operations on your keyring:
     list - list all stored keys
     set [<key>] - set a key
     get/password <key> - get a password for the given key
+    prompt - Open a dialog prompting for the key to use, then putting the
+             resulting pass on the clipboard.
     delete <key> - delete the entry for the given key
     username <domain> - get the username for the given domain
     smtp - set a smtp password (msmtp format)
@@ -70,7 +72,9 @@ This script allows you to perform some basic operations on your keyring:
                           write get/password/username to a tempfile (deleted 1s
                           after creation)
     -c, --clipboard       write get/password/username to a clipboard (cleared
-                          10s after being set)
+                          10s after being set). Requires xclip
+    -p, --paste           when used with 'prompt', paste the result password
+                          into the currently focused field. Requires xdotool
 
 vimperator
 ----------
@@ -203,3 +207,27 @@ which will prompt you for the appropriate values:
 ::
 
   ./bin/keyring smtp
+
+Others
+------
+
+For other programs the keyring script provides a `prompt` command which will
+open a dialog (pygtk) where you can enter the key to use and the keyring script
+will put the resulting password into your clipboard for 10 seconds during which
+time you can paste it into the password field of whatever app you are using:
+
+::
+
+  ./bin/keyring prompt
+
+If you would like the paste step to be performed for you, you can supply the
+`--paste` argument. Be careful though since this command cannot determine if the
+currently focused input is a text field or not, so it would paste into a clear
+text field exposing your password to anyone watching over your shoulder.
+
+::
+
+  ./bin/keyring prompt --paste
+
+You can create a mapping to this command in your preferred window manager to
+provide easy access to your keyring.
