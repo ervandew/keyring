@@ -184,19 +184,20 @@ def main():
     sys.exit(1)
 
   valid_args = {
-    'list': 1,
-    'set': lambda a: 1 <= a <= 2,
-    'smtp': lambda a: 1 <= a <= 2,
-    'delete': 2,
-    'username': lambda a: a >= 2,
-    'password': lambda a: a >= 2,
-    'get': lambda a: a >= 2,
+    'list': 0,
+    'prompt': 0,
+    'set': lambda a: 0 <= a <= 1,
+    'smtp': lambda a: 0 <= a <= 1,
+    'delete': lambda a: a >= 1,
+    'username': lambda a: a >= 1,
+    'password': lambda a: a >= 1,
+    'get': lambda a: a >= 1,
   }
   valid = valid_args.get(args[0])
   if not callable(valid):
     num = valid
     valid = lambda a: a == num
-  if not valid(len(args)):
+  if not valid(len(args) - 1):
     parser.print_help()
     sys.exit(1)
 
