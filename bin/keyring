@@ -40,7 +40,14 @@ class Keyring(object):
     items = gnomekeyring.find_items_sync(
       gnomekeyring.ITEM_NETWORK_PASSWORD, attrs
     )
+    while 'link' in items[0].attributes:
+      source = items[0].attributes['link']
+      items = gnomekeyring.find_items_sync(
+        gnomekeyring.ITEM_NETWORK_PASSWORD, {'key': source}
+      )
+
     secret = items[0].secret
+
     if pbkdf2:
       secret = pbkdf2_hex(
         secret,
@@ -77,6 +84,17 @@ class Keyring(object):
     )
     if items:
       gnomekeyring.item_delete_sync(self.keyring, items[0].item_id)
+
+  def link(self, source, *targets):
+    items = gnomekeyring.find_items_sync(
+      gnomekeyring.ITEM_NETWORK_PASSWORD, {'key': source}
+    )
+    for target in targets:
+      attrs = {'key': target, 'link': source}
+      gnomekeyring.item_create_sync(
+        self.keyring, gnomekeyring.ITEM_NETWORK_PASSWORD,
+        target, attrs, '', True
+      )
 
   def find(self, pattern):
     if isinstance(pattern, basestring):
@@ -179,6 +197,10 @@ def main():
     '  delete <key> - delete the entry for the given key\n'
     '  username <domain> - get the username for the given domain\n'
     '  smtp [<key>] - set a smtp password (msmtp format)\n'
+    '  link <key> <key> [<key> ...] - link one or more keys together\n'
+    '      Note that this is a feature unique to this script and\n'
+    '      won\'t be supported by other programs reading directly\n'
+    '      from gnome-keyring.'
   )
   parser.formatter = Formatter()
 
@@ -197,6 +219,7 @@ def main():
     'username': lambda a: a >= 1,
     'password': lambda a: a >= 1,
     'get': lambda a: a >= 1,
+    'link': lambda a: a >= 2,
   }
   valid = valid_args.get(args[0])
   if not callable(valid):
@@ -235,7 +258,15 @@ def main():
       for key in args[1:]:
         keyring.delete(key)
     except gnomekeyring.NoMatchError:
-      sys.stderr.write('error: No match found.\n')
+      sys.stderr.write('error: No match found for %s\n' % key)
+      sys.exit(1)
+
+  elif command == 'link':
+    try:
+      keys = args[1:]
+      keyring.link(*keys)
+    except gnomekeyring.NoMatchError:
+      sys.stderr.write('error: No match found for %s\n' % keys[0])
       sys.exit(1)
 
   elif command == 'username':

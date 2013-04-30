@@ -63,6 +63,10 @@ This script allows you to perform some basic operations on your keyring:
     delete <key> - delete the entry for the given key
     username <domain> - get the username for the given domain
     smtp - set a smtp password (msmtp format)
+    link <key> <key> [<key> ...] - link one or more keys together
+        Note that this is a feature unique to this script and
+        won't be supported by other programs reading directly
+        from gnome-keyring.
 
   Options:
     -h, --help            show this help message and exit
