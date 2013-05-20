@@ -72,6 +72,11 @@ This script allows you to perform some basic operations on your keyring:
     -h, --help            show this help message and exit
     -k KEYRING, --keyring=KEYRING
                           the keyring to use (default: login)
+    --hash=HASH           run the password through the specified hash before
+                          outputting it
+    --salt                combined with --hash, the key will be used as a salt
+    --pbkdf2              use pbkdf2 with optional --hash and --salt to hash the
+                          password for output
     -t TEMPFILE, --tempfile=TEMPFILE
                           write get/password/username to a tempfile (deleted 1s
                           after creation)
@@ -88,7 +93,7 @@ fields on web site login forms by pulling the information from the keyring
 based on the current domain.
 
 The first step is to store your credentials for a domain in the keyring using
-the format `username@domain` where username can be an email address if
+the format ``username@domain`` where username can be an email address if
 necessary:
 
 ::
@@ -107,14 +112,14 @@ prefixes (www, www\\d*, wwws, us, login, sitekey, secure):
     users.site.com -> users.site.com (no change)
 
 Once you've added your credentials for a given site to the keyring, you can
-then navigate to that site's login page and simply run `:keyring login` and the
+then navigate to that site's login page and simply run ``:keyring login`` and the
 username/password fields should be populated, allowing you to then manually
 submit the form.
 
 Note that the plugin will log some general debug info to the firebug console
 allowing to get an idea of what is happening behind the scenes.
 
-Here is a full usage for the `:keyring` command:
+Here is a full usage for the ``:keyring`` command:
 
 ::
 
@@ -142,9 +147,9 @@ startup file (~/.irssi/startup):
 
   load keyring.pl
 
-After installing the keyring.pl plugin, you then need to create a `login` file
+After installing the keyring.pl plugin, you then need to create a ``login`` file
 in your irssi config directory (~/.irssi/login) with a list of connection
-commands, one per line, where the special `<password>` token is replaced with
+commands, one per line, where the special ``<password>`` token is replaced with
 the password obtained from the keyring.
 
 Here is an example file to authenticate a freenode account and a google talk account:
@@ -156,14 +161,15 @@ Here is an example file to authenticate a freenode account and a google talk acc
 
 Note that if the actual key used in the keyring for that account differs from
 the username specified in the connection string, you can use the
-`<password:key>` syntax to specify the key to use when looking up the password:
+``<password:key>`` syntax to specify the key to use when looking up the
+password:
 
 ::
 
   xmppconnect -host talk.google.com myuser@gmail.com <password:myuser@gmail.com@irssi>
 
 
-Once you created the login file, you can then use the `/keyring [username]`
+Once you've created the login file, you can then use the ``/keyring [username]``
 command in irssi to authenticate all or individual accounts:
 
 ::
@@ -171,8 +177,8 @@ command in irssi to authenticate all or individual accounts:
   /keyring
   /keyring username
 
-Similar to using `/names` in a channel, supplying the special username `names`
-to `/keyring` will print a list of available usernames:
+Similar to using ``/names`` in a channel, supplying the special username
+``names`` to ``/keyring`` will print a list of available usernames:
 
 ::
 
@@ -185,7 +191,7 @@ offlineimap
 The keyring python module included at bin/keyring can also be used in
 conjunction with offlineimap.
 
-The first step is to set the `pythonfile` setting in your ~/.offlineimaprc
+The first step is to set the ``pythonfile`` setting in your ~/.offlineimaprc
 file:
 
 ::
@@ -193,7 +199,7 @@ file:
   pythonfile = /path/to/keyring/bin/keyring
 
 Then for each of your email repository configs in your ~/.offlineimaprc, you
-can set the `remotepasseval` setting to pull the password from the keyring:
+can set the ``remotepasseval`` setting to pull the password from the keyring:
 
 ::
 
@@ -202,10 +208,10 @@ can set the `remotepasseval` setting to pull the password from the keyring:
 msmtp
 -----
 
-When configured using `--with-gnome-keyring`, msmtp supports pulling
+When configured using ``--with-gnome-keyring``, msmtp supports pulling
 credentials from gnome-keyring. The only caveat is that msmtp requires that the
 credentials be stored in a very specific format in the keyring. To store keys in
-the proper format, the bin/keyring script provides a dedicated `smtp` command
+the proper format, the bin/keyring script provides a dedicated ``smtp`` command
 which will prompt you for the appropriate values:
 
 ::
@@ -215,7 +221,7 @@ which will prompt you for the appropriate values:
 Others
 ------
 
-For other programs the keyring script provides a `prompt` command which will
+For other programs the keyring script provides a ``prompt`` command which will
 open a dialog (pygtk) where you can enter the key to use and the keyring script
 will put the resulting password into your clipboard for 10 seconds during which
 time you can paste it into the password field of whatever app you are using:
@@ -225,7 +231,7 @@ time you can paste it into the password field of whatever app you are using:
   ./bin/keyring prompt
 
 If you would like the paste step to be performed for you, you can supply the
-`--paste` argument. Be careful though since this command cannot determine if the
+``--paste`` argument. Be careful though since this command cannot determine if the
 currently focused input is a text field or not, so it would paste into a clear
 text field exposing your password to anyone watching over your shoulder.
 
