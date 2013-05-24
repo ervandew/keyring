@@ -24,6 +24,8 @@ Irssi::command_bind keyring => sub {
           last;
         }
       }
+    }elsif ($parts[0] eq 'set'){
+      $username = "$parts[1]";
     }else{
       next;
     }
@@ -52,9 +54,14 @@ Irssi::command_bind keyring => sub {
     if ($status == 0){
       my $password = join('', <$stdout>);
       chomp($password);
-      $command =~ s/<password(:[^>]*)?>/$password/;
-      print "keyring: connecting $username";
-      Irssi::command($command);
+      if ($parts[0] eq 'set'){
+        print "keyring: setting $username";
+        Irssi::settings_set_str($username, $password);
+      }else{
+        print "keyring: connecting $username";
+        $command =~ s/<password(:[^>]*)?>/$password/;
+        Irssi::command($command);
+      }
     }else{
       my $error = join('', <$stderr>);
       die "Error reading data from stderr: $!" if !eof($stderr);

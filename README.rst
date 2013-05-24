@@ -180,6 +180,17 @@ command in irssi to authenticate all or individual accounts:
 Similar to using ``/names`` in a channel, supplying the special username
 ``names`` to ``/keyring`` will print a list of available usernames:
 
+This feature can also be used with irssi's ``/set`` command if you have a
+sensitive setting value. Any lines in your ``login`` file in the form of:
+
+::
+
+  set some_var <password>
+
+Will use the variable name (``some_var`` in this example) as the keyring key to
+lookup, and will substitute in the retrieved value to be set on that variable in
+irssi.
+
 ::
 
   /keyring names
