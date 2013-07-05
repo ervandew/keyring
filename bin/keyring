@@ -86,7 +86,7 @@ class Keyring(object):
       gnomekeyring.item_delete_sync(self.keyring, items[0].item_id)
 
   def link(self, source, *targets):
-    items = gnomekeyring.find_items_sync(
+    gnomekeyring.find_items_sync(
       gnomekeyring.ITEM_NETWORK_PASSWORD, {'key': source}
     )
     for target in targets:
@@ -249,6 +249,16 @@ def main():
 
   elif command == 'set':
     key = args[1] if len(args) > 1 else _get_input('key: ')
+
+    attrs = {'key': key}
+    try:
+      gnomekeyring.find_items_sync(
+        gnomekeyring.ITEM_NETWORK_PASSWORD, attrs
+      )
+      _confirm("The key '%s' already exists. Overwrite? (y/n) " % key)
+    except gnomekeyring.NoMatchError:
+      pass
+
     password = _get_input('password: ', password=True)
     print('')
     keyring.set(key, password)
@@ -275,9 +285,19 @@ def main():
   elif command == 'smtp':
     user = args[1] if len(args) > 1 else _get_input('user (user@example.com): ')
     server = _get_input('server (smtp.example.com): ')
+    key = '%s@%s' % (user, server)
+
+    attrs = {'user': user, 'server': server, 'protocol': 'smtp'}
+    try:
+      gnomekeyring.find_items_sync(
+        gnomekeyring.ITEM_NETWORK_PASSWORD, attrs
+      )
+      _confirm("An entry for '%s' already exists. Overwrite? (y/n) " % key)
+    except gnomekeyring.NoMatchError:
+      pass
+
     password = _get_input('password: ', password=True)
     print('')
-    key = '%s@%s' % (user, server)
     keyring.set(key, password, smtp=True)
 
 @output
@@ -365,6 +385,11 @@ def _get_input(prompt, password=False):
     sys.exit(0)
 
   return value
+
+def _confirm(prompt):
+  response = raw_input(prompt)
+  if response != 'y':
+    sys.exit(0)
 
 def _tempfile(tempfile, content):
   with open(tempfile, 'w') as temp:
