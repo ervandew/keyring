@@ -1,4 +1,4 @@
-.. Copyright (c) 2011 - 2013, Eric Van Dewoestine
+.. Copyright (c) 2011 - 2014, Eric Van Dewoestine
    All rights reserved.
 
    Redistribution and use of this software in source and binary forms, with
@@ -92,9 +92,16 @@ A vimperator plugin is provided which can be used to populate username/password
 fields on web site login forms by pulling the information from the keyring
 based on the current domain.
 
-The first step is to store your credentials for a domain in the keyring using
-the format ``username@domain`` where username can be an email address if
-necessary:
+To install this plugin simply add the absolute path to the keyring's vimperator
+directory to your vimperator ``runtimepath`` in your ``~/.vimperatorrc`` file:
+
+::
+
+  set runtimepath+=/path/to/keyring/vimperator
+
+After you've installed the plugin, the next step is to store your credentials
+for a domain in the keyring using the format ``username@domain`` where username
+can be an email address if necessary:
 
 ::
 
@@ -131,6 +138,17 @@ Here is a full usage for the ``:keyring`` command:
     :keyring password
        Populate the current (or last) focused password input with the password.
        Note: this will only populate the input if it is of type 'password'.
+
+pentadactyl
+-----------
+
+The pentadactyl plugin is just like the vimperator plugin, but you instead add
+the keyring's pentadactyl directory the ``runtimepath`` in your
+``~/.pentadactylrc`` file:
+
+::
+
+  set runtimepath+=/path/to/keyring/pentadactyl
 
 irssi
 -----
