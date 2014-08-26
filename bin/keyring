@@ -142,25 +142,25 @@ def pbkdf2_bin(data, salt, iterations=1000, keylen=32, hashfunc=None):
   return ''.join(map(chr, buf))[:keylen]
 
 def output(func):
-    def wrapper(options, *args, **kwargs):
-      result = None
-      try:
-        result = func(options, *args, **kwargs)
+  def wrapper(options, *args, **kwargs):
+    result = None
+    try:
+      result = func(options, *args, **kwargs)
 
-        if options.tempfile:
-          _tempfile(options.tempfile, result)
+      if options.tempfile:
+        _tempfile(options.tempfile, result)
 
+      if options.clipboard:
+        _clipboard(result)
+
+      if not options.tempfile and not options.clipboard:
+        print(result)
+    finally:
+      if not result:
         if options.clipboard:
-          _clipboard(result)
+          _clipboard('')
 
-        if not options.tempfile and not options.clipboard:
-          print(result)
-      finally:
-        if not result:
-          if options.clipboard:
-            _clipboard('')
-
-    return wraps(func)(wrapper)
+  return wraps(func)(wrapper)
 
 def main():
   parser = optparse.OptionParser()
@@ -234,7 +234,25 @@ def main():
   keyring = Keyring(options.keyring)
 
   if command == 'list':
-    for name in sorted(keyring.keys()):
+    for key in sorted(keyring.keys()):
+      name = key
+      attrs = {'key': key}
+      try:
+        items = gnomekeyring.find_items_sync(
+          gnomekeyring.ITEM_NETWORK_PASSWORD, attrs
+        )
+        if 'link' in items[0].attributes:
+          name = '%s -> %s' % (key, items[0].attributes['link'])
+      except gnomekeyring.NoMatchError:
+        # handle smtp keys
+        user, server = key.rsplit('@', 1)
+        attrs = {'user': user, 'server': server, 'protocol': 'smtp'}
+        items = gnomekeyring.find_items_sync(
+          gnomekeyring.ITEM_NETWORK_PASSWORD, attrs
+        )
+        if 'link' in items[0].attributes:
+          name = '%s -> %s' % (key, items[0].attributes['link'])
+
       print(name)
 
   elif command == 'get' or command == 'password':
