@@ -302,7 +302,7 @@ function Keyring() {
 
 var keyring = Keyring();
 
-commands.add(["keyring"],
+group.commands.add(["keyring"],
   "Insert username or password into a login field.",
   function(args) { keyring._execute(args); },
   { count: false, argCount: '*', completer: keyring._completer }
