@@ -31,7 +31,7 @@ class Keyring(object):
       keys.append(info.get_display_name())
     return keys
 
-  def get(self, key, smtp=False, hash_=None, salt=False, pbkdf2=False):
+  def get(self, key, full=False, smtp=False, hash_=None, salt=False, pbkdf2=False):
     attrs = {'key': key}
     if smtp:
       user, server = key.rsplit('@', 1)
@@ -65,13 +65,18 @@ class Keyring(object):
         method.update(secret)
         secret = method.hexdigest()
 
+    if full:
+      return Result(secret=secret, **items[0].attributes)
+
     return secret
 
-  def set(self, key, value, smtp=False):
+  def set(self, key, value, smtp=False, **kwargs):
     attrs = {'key': key}
     if smtp:
       user, server = key.rsplit('@', 1)
       attrs = {'user': user, 'server': server, 'protocol': 'smtp'}
+
+    attrs.update(kwargs)
 
     gnomekeyring.item_create_sync(
       self.keyring, gnomekeyring.ITEM_NETWORK_PASSWORD,
@@ -108,6 +113,15 @@ class Keyring(object):
         results.append(name)
 
     return results
+
+class Result(dict):
+  def __getattr__(self, attr):
+    try:
+      return self[attr]
+    # convert KeyError to an AttributeError so that things like this work:
+    #   getattr(d, 'foo', None)
+    except KeyError as ke:
+      raise AttributeError(*ke.args)
 
 # pbkdf2 taken from https://github.com/mitsuhiko/python-pbkdf2
 # Copied inline to
@@ -187,17 +201,33 @@ def main():
     "-p", "--paste", action="store_true", dest="paste",
     help="when used with 'prompt', paste the result password into " \
          "the currently focused field. Requires xdotool")
+  parser.add_option(
+    "--2factor", action="store_true", dest="twoFactor",
+    help="indicates that the key to set uses two factor authentication. " \
+         "This indicator is currently only used by the 'prompt' command " \
+         "where a subsiquent dialog will prompt you to enter your temp code " \
+         "and that value will be appended to your password. This feature " \
+         "is probably only useful for a small number of sites.")
 
   parser.set_usage('Usage: keyring [options] <command> [command args]')
   parser.set_description(
     'Commands:\n'
-    '  list - list all stored keys\n'
-    '  set [<key>] - set a key\n'
-    '  get/password <key> - get the password for the given key\n'
-    '  delete <key> - delete the entry for the given key\n'
-    '  username <domain> - get the username for the given domain\n'
-    '  smtp [<key>] - set a smtp password (msmtp format)\n'
-    '  link <key> <key> [<key> ...] - link one or more keys together\n'
+    '  list\n'
+    '    list all stored keys\n'
+    '  set [--2factor] [<key>]\n'
+    '    set a key\n'
+    '  get/password [-c/--clipboard] [--hash [--salt]] [--pbkdf2] <key>\n'
+    '    get the password for the given key\n'
+    '  prompt [-p/--paste]\n'
+    '    opens a gui prompt to get the password for a key.\n'
+    '  delete <key>\n'
+    '    delete the entry for the given key\n'
+    '  username <domain>\n'
+    '    get the username for the given domain\n'
+    '  smtp [<key>]\n'
+    '    set a smtp password (msmtp format)\n'
+    '  link <src_key> <dest_key> [<dest_key> ...]\n'
+    '    link one or more keys together\n'
     '      Note that this is a feature unique to this script and\n'
     '      won\'t be supported by other programs reading directly\n'
     '      from gnome-keyring.'
@@ -279,7 +309,10 @@ def main():
 
     password = _get_input('password: ', password=True)
     print('')
-    keyring.set(key, password)
+    attrs = {}
+    if options.twoFactor:
+      attrs['2factor'] = True
+    keyring.set(key, password, **attrs)
 
   elif command == 'delete':
     try:
@@ -377,7 +410,8 @@ def _prompt_key(options, keyring):
   if key:
     try:
       result = keyring.get(
-        key, hash_=options.hash, salt=options.salt, pbkdf2=options.pbkdf2)
+        key, full=True,
+        hash_=options.hash, salt=options.salt, pbkdf2=options.pbkdf2)
     except gnomekeyring.NoMatchError:
       dialog = gtk.MessageDialog(
         None,
@@ -390,7 +424,35 @@ def _prompt_key(options, keyring):
       dialog.show_all()
       dialog.run()
     else:
-      _clipboard(result, paste=options.paste)
+      secret = result.secret
+      if getattr(result, '2factor', False):
+        dialog = gtk.MessageDialog(
+          None,
+          gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+          gtk.MESSAGE_OTHER,
+          gtk.BUTTONS_OK,
+          None)
+        dialog.set_position(gtk.WIN_POS_CENTER)
+        dialog.set_markup('Please enter your temp 2factor auth code:')
+        entry = gtk.Entry()
+        entry.connect(
+          'activate',
+          lambda entry, dialog, response: dialog.response(response),
+          dialog,
+          gtk.RESPONSE_OK)
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label('Code:'), False, 5, 5)
+        hbox.pack_end(entry)
+        dialog.vbox.pack_end(hbox, True, True, 0)
+        dialog.show_all()
+        dialog.run()
+        code = entry.get_text()
+        dialog.destroy()
+        while gtk.events_pending():
+          gtk.main_iteration(False)
+        secret += code
+
+      _clipboard(secret, paste=options.paste)
 
 def _get_input(prompt, password=False):
   if password:
