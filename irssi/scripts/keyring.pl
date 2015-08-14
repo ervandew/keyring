@@ -36,13 +36,13 @@ Irssi::command_bind keyring => sub {
       next;
     }
 
-    if(!$username || ($account && $account ne $username)){
-      next;
-    }
-
     # handle alternate username
     if($command =~ m/.*<password:([^>]*)>.*/){
       $username = $1;
+    }
+
+    if(!$username || ($account && $account ne $username)){
+      next;
     }
 
     my ($stdin, $stdout, $stderr);
