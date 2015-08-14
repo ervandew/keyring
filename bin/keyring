@@ -275,7 +275,10 @@ def main():
           name = '%s -> %s' % (key, items[0].attributes['link'])
       except gnomekeyring.NoMatchError:
         # handle smtp keys
-        user, server = key.rsplit('@', 1)
+        try:
+            user, server = key.rsplit('@', 1)
+        except ValueError:
+            continue
         attrs = {'user': user, 'server': server, 'protocol': 'smtp'}
         items = gnomekeyring.find_items_sync(
           gnomekeyring.ITEM_NETWORK_PASSWORD, attrs
