@@ -247,6 +247,12 @@ which will prompt you for the appropriate values:
 
   ./bin/keyring smtp
 
+bash
+----
+
+A completion script is available to ease use from command line. Copy it in
+/etc/bash_completion.d or source it to make completion available.
+
 Others
 ------
 
