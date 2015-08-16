@@ -1,0 +1,55 @@
+
+_keyring()
+{
+	COMPREPLY=()
+	local index=$((COMP_CWORD - 1))
+	local cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[$index]}"
+
+	opts="list set get password prompt delete username smtp link"
+
+	while : ; do
+		case "${prev}" in
+			-*)
+				index=$((index - 1))
+				prev="${COMP_WORDS[$index]}"
+				continue
+				;;
+			set|get|password|delete|smtp)
+				case "${cur}" in
+					-*)
+						if [ "${prev}" = "get" ]; then
+							opts="-c --clipboard --hash --salt --pbkdf2"
+						elif [ "${prev}" = "set" ]; then
+							opts="--2factor"
+						else
+							opts=""
+						fi
+
+						break
+						;;
+					*)
+						opts=$(keyring list)
+						break
+						;;
+				esac
+				;;
+			prompt)
+				opts="-p --paste"
+				break
+				;;
+			list|username)
+				opts=""
+				break
+				;;
+			*)
+				break
+				;;
+		esac
+	done
+
+	COMPREPLY=($(compgen -W "${opts}" -- ${cur}))
+	return 0
+}
+
+complete -F _keyring keyring
