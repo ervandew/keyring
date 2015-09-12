@@ -13,6 +13,7 @@ Irssi::command_bind keyring => sub {
     my $command = $_;
     my @parts = split(/\s/, $command);
     my $username;
+    my $username_alt;
     if ($parts[0] eq 'connect'){
       if (scalar(@parts) >= 5){
         $username = "$parts[4]\@$parts[1]";
@@ -30,23 +31,34 @@ Irssi::command_bind keyring => sub {
       next;
     }
 
+    # handle alternate username
+    if ($command =~ m/.*<password:([^>]*)>.*/){
+      $username_alt = $1;
+    }
+
     # just print available account names
-    if($account eq 'names') {
-      print $username;
+    if ($account eq 'names') {
+      if ($username){
+        print $username;
+      }elsif ($username_alt){
+        print $username_alt;
+      }
       next;
     }
 
-    # handle alternate username
-    if($command =~ m/.*<password:([^>]*)>.*/){
-      $username = $1;
+    if ($account && $account ne $username && $account ne $username_alt){
+      next;
     }
 
-    if(!$username || ($account && $account ne $username)){
+    if (!$username && !$username_alt){
       next;
     }
 
     my ($stdin, $stdout, $stderr);
     $stderr = gensym();
+    if ($username_alt){
+      $username = $username_alt;
+    }
     my  $pid = open3($stdin, $stdout, $stderr, "keyring password $username");
     waitpid($pid, 0);
 
