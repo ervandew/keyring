@@ -224,7 +224,7 @@ def main():
     '  set [--2factor] [--smtp] [<key>]\n'
     '    set a key\n'
     '    when --smtp is supplied set a smtp password (msmtp format)\n'
-    '  get/password [-c/--clipboard] [--hash [--salt]] [--pbkdf2] <key>\n'
+    '  get/password [-c/--clipboard] [--smtp] [--hash [--salt]] [--pbkdf2] <key>\n'
     '    get the password for the given key\n'
     '  prompt [-p/--paste]\n'
     '    opens a gui prompt to get the password for a key.\n'

@@ -1,4 +1,4 @@
-.. Copyright (c) 2011 - 2014, Eric Van Dewoestine
+.. Copyright (c) 2011 - 2017, Eric Van Dewoestine
    All rights reserved.
 
    Redistribution and use of this software in source and binary forms, with
@@ -55,23 +55,30 @@ This script allows you to perform some basic operations on your keyring:
   Usage: keyring [options] <command> [command args]
 
   Commands:
-    list - list all stored keys
-    set [<key>] - set a key
-    get/password <key> - get a password for the given key
-    prompt - Open a dialog prompting for the key to use, then putting the
-             resulting pass on the clipboard.
-    delete <key> - delete the entry for the given key
-    username <domain> - get the username for the given domain
-    smtp - set a smtp password (msmtp format)
-    link <key> <key> [<key> ...] - link one or more keys together
+    list
+      list all stored keys
+    set [--2factor] [--smtp] [<key>]
+      set a key
+      when --smtp is supplied set a smtp password (msmtp format)
+    get/password [-c/--clipboard] [--smtp] [--hash [--salt]] [--pbkdf2] <key>
+      get the password for the given key
+    prompt [-p/--paste]
+      opens a gui prompt to get the password for a key.
+    delete [--smtp] <key>
+      delete the entry for the given key
+    username <domain>
+      get the username for the given domain
+    link <src_key> <dest_key> [<dest_key> ...]
+      link one or more keys together
         Note that this is a feature unique to this script and
         won't be supported by other programs reading directly
         from gnome-keyring.
-
   Options:
     -h, --help            show this help message and exit
     -k KEYRING, --keyring=KEYRING
                           the keyring to use (default: login)
+    --smtp                when used with the get, set, or delete commands, use
+                          the msmtp format
     --hash=HASH           run the password through the specified hash before
                           outputting it
     --salt                combined with --hash, the key will be used as a salt
@@ -84,6 +91,12 @@ This script allows you to perform some basic operations on your keyring:
                           10s after being set). Requires xclip
     -p, --paste           when used with 'prompt', paste the result password
                           into the currently focused field. Requires xdotool
+    --2factor             indicates that the key to set uses two factor
+                          authentication. This indicator is currently only used
+                          by the 'prompt' command where a subsiquent dialog will
+                          prompt you to enter your temp code and that value will
+                          be appended to your password. This feature is probably
+                          only useful for a small number of sites.
 
 vimperator
 ----------
@@ -240,12 +253,12 @@ msmtp
 When configured using ``--with-gnome-keyring``, msmtp supports pulling
 credentials from gnome-keyring. The only caveat is that msmtp requires that the
 credentials be stored in a very specific format in the keyring. To store keys in
-the proper format, the bin/keyring script provides a dedicated ``smtp`` command
-which will prompt you for the appropriate values:
+the proper format, the bin/keyring script provides a ``--smtp`` option to the
+set command which will prompt you for the appropriate values:
 
 ::
 
-  ./bin/keyring smtp
+  ./bin/keyring set --smtp
 
 bash
 ----
