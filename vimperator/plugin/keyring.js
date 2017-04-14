@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 - 2012 by Eric Van Dewoestine
+ * Copyright (c) 2010 - 2016 by Eric Van Dewoestine
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -32,15 +32,7 @@
  */
 function Keyring() {
   function console(){
-    var Firebug = window
-      .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-      .getInterface(Components.interfaces.nsIWebNavigation)
-      .QueryInterface(Components.interfaces.nsIDocShellTreeItem)
-      .rootTreeItem
-      .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-      .getInterface(Components.interfaces.nsIDOMWindow).Firebug;
-
-    return Firebug.Console || {log: function(){}, error: function(){}};
+    return window.console;
   }
 
   function paste(arg){
@@ -295,7 +287,10 @@ function Keyring() {
           commands.push(name.replace('_', '-'));
         }
       }
-      context.completions = [[c, ''] for each (c in commands)];
+      // FIXME: not providing completions
+      context.completions = util.map(commands, function(i, command){
+        return [command, command];
+      });
     }
   }
 }
