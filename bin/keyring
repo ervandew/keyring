@@ -83,9 +83,13 @@ class Keyring(object):
       key, attrs, value, True
     )
 
-  def delete(self, key):
+  def delete(self, key, smtp=False):
+    attrs = {'key': key}
+    if smtp:
+      user, server = key.rsplit('@', 1)
+      attrs = {'user': user, 'server': server, 'protocol': 'smtp'}
     items = gnomekeyring.find_items_sync(
-      gnomekeyring.ITEM_NETWORK_PASSWORD, {'key': key}
+      gnomekeyring.ITEM_NETWORK_PASSWORD, attrs
     )
     if items:
       gnomekeyring.item_delete_sync(self.keyring, items[0].item_id)
@@ -182,6 +186,9 @@ def main():
     "-k", "--keyring", dest="keyring", default="login",
     help="the keyring to use (default: login)")
   parser.add_option(
+    "--smtp", action="store_true", dest="smtp",
+    help="when used with the get, set, or delete commands, use the msmtp format")
+  parser.add_option(
     "--hash", dest="hash",
     help="run the password through the specified hash before outputting it")
   parser.add_option(
@@ -214,18 +221,17 @@ def main():
     'Commands:\n'
     '  list\n'
     '    list all stored keys\n'
-    '  set [--2factor] [<key>]\n'
+    '  set [--2factor] [--smtp] [<key>]\n'
     '    set a key\n'
+    '    when --smtp is supplied set a smtp password (msmtp format)\n'
     '  get/password [-c/--clipboard] [--hash [--salt]] [--pbkdf2] <key>\n'
     '    get the password for the given key\n'
     '  prompt [-p/--paste]\n'
     '    opens a gui prompt to get the password for a key.\n'
-    '  delete <key>\n'
+    '  delete [--smtp] <key>\n'
     '    delete the entry for the given key\n'
     '  username <domain>\n'
     '    get the username for the given domain\n'
-    '  smtp [<key>]\n'
-    '    set a smtp password (msmtp format)\n'
     '  link <src_key> <dest_key> [<dest_key> ...]\n'
     '    link one or more keys together\n'
     '      Note that this is a feature unique to this script and\n'
@@ -244,7 +250,6 @@ def main():
     'list': 0,
     'prompt': 0,
     'set': lambda a: 0 <= a <= 1,
-    'smtp': lambda a: 0 <= a <= 1,
     'delete': lambda a: a >= 1,
     'username': lambda a: a >= 1,
     'password': lambda a: a >= 1,
@@ -300,27 +305,35 @@ def main():
 
   elif command == 'set':
     key = args[1] if len(args) > 1 else _get_input('key: ')
-
     attrs = {'key': key}
+
+    if options.smtp:
+      user = args[1] if len(args) > 1 else _get_input('user (user@example.com): ')
+      server = _get_input('server (smtp.example.com): ')
+      key = '%s@%s' % (user, server)
+
+      attrs = {'user': user, 'server': server, 'protocol': 'smtp'}
+
     try:
       gnomekeyring.find_items_sync(
         gnomekeyring.ITEM_NETWORK_PASSWORD, attrs
       )
-      _confirm("The key '%s' already exists. Overwrite? (y/n) " % key)
+      _confirm("An entry for '%s' already exists. Overwrite? (y/n) " % key)
     except gnomekeyring.NoMatchError:
       pass
 
     password = _get_input('password: ', password=True)
     print('')
+
     attrs = {}
-    if options.twoFactor:
+    if options.twoFactor and not options.smtp:
       attrs['2factor'] = True
-    keyring.set(key, password, **attrs)
+    keyring.set(key, password, smtp=options.smtp, **attrs)
 
   elif command == 'delete':
     try:
       for key in args[1:]:
-        keyring.delete(key)
+        keyring.delete(key, smtp=options.smtp)
     except gnomekeyring.NoMatchError:
       sys.stderr.write('error: No match found for %s\n' % key)
       sys.exit(1)
@@ -336,31 +349,18 @@ def main():
   elif command == 'username':
     _get_username(options, keyring, *args[1:])
 
-  elif command == 'smtp':
-    user = args[1] if len(args) > 1 else _get_input('user (user@example.com): ')
-    server = _get_input('server (smtp.example.com): ')
-    key = '%s@%s' % (user, server)
-
-    attrs = {'user': user, 'server': server, 'protocol': 'smtp'}
-    try:
-      gnomekeyring.find_items_sync(
-        gnomekeyring.ITEM_NETWORK_PASSWORD, attrs
-      )
-      _confirm("An entry for '%s' already exists. Overwrite? (y/n) " % key)
-    except gnomekeyring.NoMatchError:
-      pass
-
-    password = _get_input('password: ', password=True)
-    print('')
-    keyring.set(key, password, smtp=True)
-
 @output
 def _get_password(options, keyring, *keys):
   error = None
   for key in keys:
     try:
       return keyring.get(
-        key, hash_=options.hash, salt=options.salt, pbkdf2=options.pbkdf2)
+        key,
+        smtp=options.smtp,
+        hash_=options.hash,
+        salt=options.salt,
+        pbkdf2=options.pbkdf2,
+      )
     except gnomekeyring.NoMatchError as nme:
       error = nme
 
