@@ -1,4 +1,4 @@
-.. Copyright (c) 2011 - 2017, Eric Van Dewoestine
+.. Copyright (c) 2011 - 2018, Eric Van Dewoestine
    All rights reserved.
 
    Redistribution and use of this software in source and binary forms, with
@@ -98,21 +98,25 @@ This script allows you to perform some basic operations on your keyring:
                           be appended to your password. This feature is probably
                           only useful for a small number of sites.
 
-vimperator
-----------
+qutebrowser
+-----------
 
-A vimperator plugin is provided which can be used to populate username/password
-fields on web site login forms by pulling the information from the keyring
-based on the current domain.
+A qutebrowser userscript is provided which can be used to populate
+username/password fields on web site login forms by pulling the information from
+the keyring based on the current domain.
 
-To install this plugin simply add the absolute path to the keyring's vimperator
-directory to your vimperator ``runtimepath`` in your ``~/.vimperatorrc`` file:
+To install this userscript you can either copy or symlink
+``qutebrowser/userscripts/keyring`` to your
+``~/.local/share/qutebrowser/userscripts`` directory.
+
+You can then update ``~/.config/qutebrowser/config.py`` to add an alias for the
+userscript:
 
 ::
 
-  set runtimepath+=/path/to/keyring/vimperator
+  c.aliases['keyring'] = 'spawn --userscript keyring'
 
-After you've installed the plugin, the next step is to store your credentials
+After you've installed the userscript, the next step is to store your credentials
 for a domain in the keyring using the format ``username@domain`` where username
 can be an email address if necessary:
 
@@ -122,7 +126,7 @@ can be an email address if necessary:
   ./bin/keyring set myuser@gmail.com@somesite.com
 
 When deciding what domain to suffix the key with, please be aware that the
-vimperator plugin will use the full domain name, but will strip off common
+userscript will use the full domain name, but will strip off common
 prefixes (www, www\\d*, wwws, us, login, sitekey, secure):
 
 ::
@@ -132,36 +136,9 @@ prefixes (www, www\\d*, wwws, us, login, sitekey, secure):
     users.site.com -> users.site.com (no change)
 
 Once you've added your credentials for a given site to the keyring, you can
-then navigate to that site's login page and simply run ``:keyring login`` and the
+then navigate to that site's login page and simply run ``:keyring`` and the
 username/password fields should be populated, allowing you to then manually
 submit the form.
-
-Note that the plugin will log some general debug info to the firebug console
-allowing to get an idea of what is happening behind the scenes.
-
-Here is a full usage for the ``:keyring`` command:
-
-::
-
-  Usage:
-    :keyring login
-       Attempt to find the username/password fields and populate them.
-    :keyring username
-       Populate the current (or last) focused input with the username.
-    :keyring password
-       Populate the current (or last) focused password input with the password.
-       Note: this will only populate the input if it is of type 'password'.
-
-pentadactyl
------------
-
-The pentadactyl plugin is just like the vimperator plugin, but you instead add
-the keyring's pentadactyl directory the ``runtimepath`` in your
-``~/.pentadactylrc`` file:
-
-::
-
-  set runtimepath+=/path/to/keyring/pentadactyl
 
 irssi
 -----
@@ -198,7 +175,6 @@ password:
 ::
 
   xmppconnect -host talk.google.com myuser@gmail.com <password:myuser@gmail.com@irssi>
-
 
 Once you've created the login file, you can then use the ``/keyring [username]``
 command in irssi to authenticate all or individual accounts:

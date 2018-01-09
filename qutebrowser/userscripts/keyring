@@ -1,0 +1,121 @@
+#!/usr/bin/env python2
+
+import contextlib
+import os
+import re
+import subprocess
+import sys
+
+from urlparse import urlparse
+
+prefixes = [
+  'login',
+  'safe',
+  'secure.*?',
+  'sitekey',
+  'us',
+  'wwws',
+  r'www\d*',
+]
+prefix_regex = re.compile(r'^(%s)\.' % '|'.join(prefixes))
+
+class Qute(object):
+  def cmd(self, line):
+    self.fifo.write('%s\n' % line)
+
+  def info(self, msg):
+    self.cmd('message-info "%s"' % msg)
+
+  def error(self, msg):
+    self.cmd('message-error "%s"' % msg)
+
+  def execute(self, cmd):
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    if stdout:
+      stdout = stdout.decode()
+    if stderr:
+      stderr = stderr.decode()
+
+    if process.returncode:
+      self.error('Unable to find %s for: %s' % (cmd[1], cmd[2]))
+      sys.exit(0)
+
+    return stdout.strip()
+
+  def __enter__(self):
+    self.fifo = open(os.environ['QUTE_FIFO'], 'w')
+    return self
+
+  def __exit__(self, *args):
+    self.fifo.close()
+
+def main():
+  with Qute() as qute:
+    html = os.environ['QUTE_HTML']
+    command = os.environ['QUTE_COMMANDLINE_TEXT']
+
+    domain = urlparse(os.environ['QUTE_URL']).netloc
+    domain = prefix_regex.sub('', domain)
+    username = qute.execute(['keyring', 'username', domain])
+    password = qute.execute(['keyring', 'password', '%s@%s' % (username, domain)])
+    js = JS % {'username': username, 'password': password}
+    js = js.replace('\n', ' ')
+    qute.cmd('jseval -q %s' % js)
+    qute.cmd('enter-mode insert')
+
+JS = '''
+  function visible(input){
+    var style = input.ownerDocument.defaultView.getComputedStyle(input, null);
+    if(style.getPropertyValue('display') === 'none'){
+      return false;
+    }
+    if(style.getPropertyValue('visibility') !== 'visible'){
+      return false;
+    }
+    return true;
+  }
+
+  function find(root, selector){
+    var inputs = root.querySelectorAll(selector);
+    for(var i = 0; i < inputs.length; i++){
+      if(visible(inputs[i])){
+        return inputs[i];
+      }
+    }
+    return null;
+  }
+
+  function set(input, value){
+    input.dispatchEvent(new Event('focus'));
+    input.value = value;
+    input.dispatchEvent(new KeyboardEvent('keydown', {'bubbles': true}));
+    input.dispatchEvent(new KeyboardEvent('keypress', {'bubbles': true}));
+    input.dispatchEvent(new KeyboardEvent('keyup', {'bubbles': true}));
+    input.dispatchEvent(new Event('change', {'bubbles': true}));
+  }
+
+  var password = find(document, 'input[type=password]');
+  if(password){
+    var username = null;
+    var node = password.parentNode;
+    while(node != document){
+      username = node.querySelector('input[type=email],input[type=text]');
+      if (username){
+        break;
+      }
+      node = node.parentNode;
+    }
+    if(username){
+      set(username, '%(username)s');
+      set(password, '%(password)s');
+    }
+  }
+'''
+
+if __name__ == '__main__':
+  try:
+    main()
+  except KeyboardInterrupt:
+    print('')
+    sys.exit(0)
