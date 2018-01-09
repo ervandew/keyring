@@ -164,15 +164,15 @@ def output(func):
     result = None
     try:
       result = func(options, *args, **kwargs)
+      if result:
+        if options.tempfile:
+          _tempfile(options.tempfile, result)
 
-      if options.tempfile:
-        _tempfile(options.tempfile, result)
+        if options.clipboard:
+          _clipboard(result)
 
-      if options.clipboard:
-        _clipboard(result)
-
-      if not options.tempfile and not options.clipboard:
-        print(result)
+        if not options.tempfile and not options.clipboard:
+          print(result)
     finally:
       if not result:
         if options.clipboard:
@@ -347,7 +347,11 @@ def main():
       sys.exit(1)
 
   elif command == 'username':
-    _get_username(options, keyring, *args[1:])
+    try:
+      _get_username(options, keyring, args[1])
+    except gnomekeyring.NoMatchError:
+      sys.stderr.write('error: No match found.\n')
+      sys.exit(1)
 
 @output
 def _get_password(options, keyring, *keys):
@@ -368,18 +372,17 @@ def _get_password(options, keyring, *keys):
     raise error
 
 @output
-def _get_username(options, keyring, *keys):
-  for key in keys:
-    results = keyring.find('.*@%s$' % key)
-    if results:
-      results = set([r.rsplit('@', 1)[0] for r in results])
-    else:
-      results = keyring.find('^%s$' % key)
+def _get_username(options, keyring, key):
+  results = keyring.find('.*@%s$' % key)
+  if results:
+    results = set([r.rsplit('@', 1)[0] for r in results])
+  else:
+    results = keyring.find('^%s$' % key)
 
-    if results:
-      return '\n'.join(results)
+  if not results:
+    raise gnomekeyring.NoMatchError()
 
-  out('error: No match found.', file=sys.stderr)
+  return '\n'.join(results)
 
 def _prompt_key(options, keyring):
   import gtk
