@@ -126,17 +126,16 @@ can be an email address if necessary:
   ./bin/keyring set myuser@gmail.com@somesite.com
 
 When deciding what domain to suffix the key with, please be aware that the
-userscript will use the full domain name, but will strip off common
-prefixes (www, www\\d*, wwws, us, login, sitekey, secure):
+userscript with start with the full domain name and then strip off subdomains
+until it finds a username or reaches the base domain, which it assumes is a
+domain name with one '.' in it (eg: site.com, site.org, etc):
 
 ::
 
-    www.site.com -> site.com
-    www1.site.com -> site.com
-    users.site.com -> users.site.com (no change)
+    www.site.com: will try www.site.com, then site.com
 
-Once you've added your credentials for a given site to the keyring, you can
-then navigate to that site's login page and simply run ``:keyring`` and the
+Once you've added your credentials for a given domain to the keyring, you can
+then navigate to the domain's login page and simply run ``:keyring`` and the
 username/password fields should be populated, allowing you to then manually
 submit the form.
 
