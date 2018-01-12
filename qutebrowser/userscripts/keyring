@@ -58,12 +58,19 @@ def main(qute):
 
 JS = '''
   function visible(input){
-    var style = input.ownerDocument.defaultView.getComputedStyle(input, null);
-    if(style.getPropertyValue('display') === 'none'){
-      return false;
-    }
-    if(style.getPropertyValue('visibility') !== 'visible'){
-      return false;
+    var node = input;
+    while(node){
+      var style = node.ownerDocument.defaultView.getComputedStyle(node, null);
+      if(node.nodeName.toLowerCase() == 'body'){
+        return true;
+      }
+      if(style.getPropertyValue('display') === 'none'){
+        return false;
+      }
+      if(style.getPropertyValue('visibility') !== 'visible'){
+        return false;
+      }
+      node = node.parentNode;
     }
     return true;
   }
