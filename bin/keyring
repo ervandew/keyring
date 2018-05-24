@@ -322,7 +322,8 @@ def main():
     except gnomekeyring.NoMatchError:
       pass
 
-    password = _get_input('password: ', password=True)
+    password = _get_input(
+      'password: ', password=True, allow_empty=options.twoFactor)
     print('')
 
     attrs = {}
@@ -460,13 +461,13 @@ def _prompt_key(options, keyring):
 
       _clipboard(secret, paste=options.paste)
 
-def _get_input(prompt, password=False):
+def _get_input(prompt, password=False, allow_empty=False):
   if password:
     value = getpass.getpass(prompt)
   else:
     value = raw_input(prompt)
 
-  if not value:
+  if not value and not allow_empty:
     sys.stderr.write('No value supplied, aborting.')
     sys.exit(0)
 
