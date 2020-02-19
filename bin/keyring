@@ -496,7 +496,7 @@ def _clipboard(content, paste=False):
       _cleanup(_cleanup_clipboard, 10)
 
 def _paste_clipboard(timeout):
-  os.popen('xdotool key ctrl+v')
+  os.popen('xdotool key ctrl+shift+v')
   _cleanup_clipboard(timeout)
 
 def _cleanup_clipboard(timeout):
