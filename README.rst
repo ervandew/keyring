@@ -1,4 +1,4 @@
-.. Copyright (c) 2011 - 2018, Eric Van Dewoestine
+.. Copyright (c) 2011 - 2020, Eric Van Dewoestine
    All rights reserved.
 
    Redistribution and use of this software in source and binary forms, with
@@ -159,12 +159,24 @@ in your irssi config directory (~/.irssi/login) with a list of connection
 commands, one per line, where the special ``<password>`` token is replaced with
 the password obtained from the keyring.
 
-Here is an example file to authenticate a freenode account and a google talk account:
+Here is an example file to authenticate a freenode account: and a google talk account:
 
 ::
 
   connect irc.freenode.net 6667 <password> mynick
+
+Example authenticating a google talk account using irssi-xmpp:
+
+::
+
   xmppconnect -host talk.google.com myuser@gmail.com <password>
+
+Example identifying with bitlbee running on localhost (must already be
+connected):
+
+::
+
+  msg &bitlbee identify <password>
 
 Note that if the actual key used in the keyring for that account differs from
 the username specified in the connection string, you can use the

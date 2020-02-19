@@ -5,7 +5,7 @@ use Irssi;
 use Symbol;
 
 Irssi::command_bind keyring => sub {
-  my ($account) = @_;
+  my ($account, $server, $witem) = @_;
 
   open(LOGIN, "$ENV{HOME}/.irssi/login");
   while (<LOGIN>) {
@@ -24,6 +24,10 @@ Irssi::command_bind keyring => sub {
           $username = $_;
           last;
         }
+      }
+    }elsif ($parts[0] eq 'msg'){
+      if ($parts[1] eq '&bitlbee' && $parts[2] eq 'identify'){
+        $username = 'bitlbee';
       }
     }elsif ($parts[0] eq 'set'){
       $username = "$parts[1]";
@@ -72,7 +76,23 @@ Irssi::command_bind keyring => sub {
       }else{
         print "keyring: connecting $username";
         $command =~ s/<password(:[^>]*)?>/$password/;
-        Irssi::command($command);
+        if ($parts[0] eq 'msg' && $username eq 'bitlbee'){
+          my $localhost;
+          foreach (Irssi::servers()) {
+            if ($server->{real_address} eq 'localhost'){
+              $localhost = $server;
+              last;
+            }
+          }
+          if (!$localhost){
+            print 'Unable to connect to bitlbee: not connected to localhost'
+          }else{
+            Irssi::Server::command($localhost, $command);
+          }
+
+        }else{
+          Irssi::command($command);
+        }
       }
     }else{
       my $error = join('', <$stderr>);
