@@ -1,12 +1,11 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 import contextlib
 import os
 import re
 import subprocess
 import sys
-
-from urlparse import urlparse
+import urllib.parse
 
 class Qute(object):
   def cmd(self, line):
@@ -42,7 +41,7 @@ class Qute(object):
     self.fifo.close()
 
 def main(qute):
-  domain = urlparse(os.environ['QUTE_URL']).netloc
+  domain = urllib.parse.urlparse(os.environ['QUTE_URL']).netloc
   while True:
     exit = domain.count('.') <= 1
     username = qute.execute(['keyring', 'username', domain], exit=exit)

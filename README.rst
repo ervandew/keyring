@@ -43,7 +43,7 @@ in the repository to be available in your path.
 
 Dependencies:
   - gnome-keyring
-  - python-gnomekeyring
+  - python-secretstorage
 
 bin/keyring
 -----------
@@ -63,7 +63,7 @@ This script allows you to perform some basic operations on your keyring:
     get/password [-c/--clipboard] [--smtp] [--hash [--salt]] [--pbkdf2] <key>
       get the password for the given key
     prompt [-p/--paste]
-      opens a gui prompt to get the password for a key.
+      opens a gui prompt to get the password for a key. Requires python-gobject.
     delete [--smtp] <key>
       delete the entry for the given key
     username <domain>
@@ -126,7 +126,7 @@ can be an email address if necessary:
   ./bin/keyring set myuser@gmail.com@somesite.com
 
 When deciding what domain to suffix the key with, please be aware that the
-userscript with start with the full domain name and then strip off subdomains
+userscript will start with the full domain name and then strip off subdomains
 until it finds a username or reaches the base domain, which it assumes is a
 domain name with one '.' in it (eg: site.com, site.org, etc):
 
@@ -257,9 +257,10 @@ Others
 ------
 
 For other programs the keyring script provides a ``prompt`` command which will
-open a dialog (pygtk) where you can enter the key to use and the keyring script
-will put the resulting password into your clipboard for 10 seconds during which
-time you can paste it into the password field of whatever app you are using:
+open a dialog (python-gobject) where you can enter the key to use and the
+keyring script will put the resulting password into your clipboard for 10
+seconds during which time you can paste it into the password field of whatever
+app you are using:
 
 ::
 
