@@ -519,6 +519,11 @@ def out(string, **kwargs):
   file = kwargs.pop('file', sys.stdout)
   file.write('%s\n' % string)
 
+def get_password(key, keyring='login', encoding='utf8'):
+  with closing(secretstorage.dbus_init()) as connection:
+    keyring = Keyring(connection, keyring=keyring, encoding=encoding)
+    return keyring.get(key)
+
 if __name__ == '__main__':
   try:
     with closing(secretstorage.dbus_init()) as connection:

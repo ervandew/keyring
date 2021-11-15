@@ -1,4 +1,4 @@
-.. Copyright (c) 2011 - 2020, Eric Van Dewoestine
+.. Copyright (c) 2011 - 2021, Eric Van Dewoestine
    All rights reserved.
 
    Redistribution and use of this software in source and binary forms, with
@@ -232,7 +232,21 @@ can set the ``remotepasseval`` setting to pull the password from the keyring:
 
 ::
 
-  remotepasseval = Keyring().get('me@domain.com')
+  remotepasseval = get_password('me@domain.com')
+
+.. note
+
+  If you are still using offlineimap for python2, then you'll need to use the
+  following configuration instead:
+
+  ::
+
+    pythonfile = /path/to/keyring/bin/keyring2
+
+  ::
+
+    remotepasseval = Keyring().get('me@domain.com')
+
 
 msmtp
 -----
