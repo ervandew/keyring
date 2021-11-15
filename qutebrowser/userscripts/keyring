@@ -53,7 +53,7 @@ def main(qute):
   js = JS % {'username': username, 'password': password}
   js = js.replace('\n', ' ')
   qute.cmd('jseval -q %s' % js)
-  qute.cmd('enter-mode insert')
+  qute.cmd('mode-enter insert')
 
 JS = '''
   function visible(input){
