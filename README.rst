@@ -234,7 +234,7 @@ can set the ``remotepasseval`` setting to pull the password from the keyring:
 
   remotepasseval = get_password('me@domain.com')
 
-.. note
+.. note::
 
   If you are still using offlineimap for python2, then you'll need to use the
   following configuration instead:
