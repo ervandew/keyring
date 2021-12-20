@@ -475,7 +475,7 @@ def _cleanup_tempfile(timeout, tempfile):
   os.unlink(tempfile)
 
 def _clipboard(content, paste=False):
-  os.popen('xclip -selection clipboard', 'w').write(content)
+  os.popen('sh -c \'echo "%s" | xclip -selection clipboard\'' % content)
   if content:
     if paste:
       _cleanup(_paste_clipboard, .2)
@@ -483,7 +483,7 @@ def _clipboard(content, paste=False):
       _cleanup(_cleanup_clipboard, 10)
 
 def _paste_clipboard(timeout):
-  os.popen('xdotool key ctrl+shift+v')
+  os.popen('sh -c \'xdotool type "$(xclip -o -selection clipboard)"\'')
   _cleanup_clipboard(timeout)
 
 def _cleanup_clipboard(timeout):
