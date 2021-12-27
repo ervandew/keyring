@@ -8,6 +8,7 @@ import getpass
 import hashlib
 import hmac
 from itertools import starmap
+import json
 from operator import itemgetter, xor
 import optparse
 import os
@@ -213,10 +214,11 @@ def main(connection):
   parser.add_option(
     '--2factor', action='store_true', dest='twoFactor',
     help='indicates that the key to set uses two factor authentication. ' \
-         'This indicator is currently only used by the \'prompt\' command ' \
-         'where a subsiquent dialog will prompt you to enter your temp code ' \
-         'and that value will be appended to your password. This feature ' \
-         'is probably only useful for a small number of sites.')
+         'This indicator is currently only used by the \'prompt\' and \'json\' ' \
+         'commands where the first will prompt you to enter your temp code ' \
+         'and that value will be appended to your password and the later will '\
+         'return true for the 2factor key in the json result. This feature ' \
+         'is probably only useful for a small number of sites currently.')
 
   parser.set_usage('Usage: keyring [options] <command> [command args]')
   parser.set_description(
@@ -226,8 +228,12 @@ def main(connection):
     '  set [--2factor] [--smtp] [<key>]\n'
     '    set a key\n'
     '    when --smtp is supplied set a smtp password (msmtp format)\n'
-    '  get/password [-c/--clipboard] [--smtp] [--hash [--salt]] [--pbkdf2] <key>\n'
+    '  get/password/json [-c/--clipboard] [--smtp] [--hash [--salt]] [--pbkdf2] <key>\n'
     '    get the password for the given key\n'
+    '    if json command is used then the result will be a json dict of:\n'
+    '      {\'password\': <password, \'2factor\': <true|false>}\n'
+    '    this is useful for scripts that may need to prompt the user for\n'
+    '    2factor information\n'
     '  prompt [-p/--paste]\n'
     '    opens a gui prompt to get the password for a key.\n'
     '  delete [--smtp] <key>\n'
@@ -249,13 +255,14 @@ def main(connection):
     sys.exit(1)
 
   valid_args = {
+    'username': 1,
+    'password': 1,
+    'get': 1,
+    'json': 1,
     'list': 0,
     'prompt': 0,
     'set': lambda a: 0 <= a <= 1,
     'delete': lambda a: a >= 1,
-    'username': lambda a: a >= 1,
-    'password': lambda a: a >= 1,
-    'get': lambda a: a >= 1,
     'link': lambda a: a >= 2,
   }
   valid = valid_args.get(args[0])
@@ -280,7 +287,7 @@ def main(connection):
 
   elif command == 'get' or command == 'password':
     try:
-      _get_password(options, keyring, *args[1:])
+      _get_password(options, keyring, args[1])
     except LookupError:
       sys.stderr.write('error: No match found.\n')
       sys.exit(1)
@@ -335,17 +342,32 @@ def main(connection):
       sys.stderr.write('error: No match found.\n')
       sys.exit(1)
 
+  elif command == 'json':
+    try:
+      result = keyring.get(
+        args[1],
+        full=True,
+        hash_=options.hash,
+        salt=options.salt,
+        pbkdf2=options.pbkdf2,
+      )
+      json.dump({
+        'password': result.secret,
+        '2factor': bool(getattr(result, '2factor', None)),
+      }, sys.stdout)
+    except LookupError:
+      json.dump({'error': 'No match found.'}, sys.stderr)
+      sys.exit(1)
+
 @output
-def _get_password(options, keyring, *keys):
-  error = None
-  for key in keys:
-    return keyring.get(
-      key,
-      smtp=options.smtp,
-      hash_=options.hash,
-      salt=options.salt,
-      pbkdf2=options.pbkdf2,
-    )
+def _get_password(options, keyring, key):
+  return keyring.get(
+    key,
+    smtp=options.smtp,
+    hash_=options.hash,
+    salt=options.salt,
+    pbkdf2=options.pbkdf2,
+  )
 
 @output
 def _get_username(options, keyring, key):
@@ -434,8 +456,12 @@ def _prompt_key(options, keyring):
   if key:
     try:
       result = keyring.get(
-        key, full=True,
-        hash_=options.hash, salt=options.salt, pbkdf2=options.pbkdf2)
+        key,
+        full=True,
+        hash_=options.hash,
+        salt=options.salt,
+        pbkdf2=options.pbkdf2,
+      )
     except LookupError:
       window = MessageWindow('Unable to find the key: ' + key)
       window.display()
