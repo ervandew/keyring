@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import contextlib
+import json
 import os
 import re
 import subprocess
@@ -49,8 +50,13 @@ def main(qute):
       break
     _, _, domain = domain.partition('.')
 
-  password = qute.execute(['keyring', 'password', '%s@%s' % (username, domain)])
-  js = JS % {'username': username, 'password': password}
+  entry = qute.execute(['keyring', 'json', '%s@%s' % (username, domain)])
+  entry = json.loads(entry)
+  js = JS % {
+    'username': username,
+    'password': entry['password'],
+    '2factor': 'true' if entry['2factor'] else 'false',
+  }
   js = js.replace('\n', ' ')
   qute.cmd('jseval -q %s' % js)
   qute.cmd('mode-enter insert')
@@ -105,8 +111,12 @@ JS = '''
       node = node.parentNode;
     }
     if(username){
+      var secret = '%(password)s';
+      if(%(2factor)s){
+        secret += prompt('Please enter your temp 2factor auth code:');
+      }
       set(username, '%(username)s');
-      set(password, '%(password)s');
+      set(password, secret);
     }
   }
 '''
